@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MWEMA | Interactive Systems & Protocols Tutor</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131c31;
+      --card-border: #223254;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-osi: #0ea5e9;
+      --accent-proto: #6366f1;
+      --accent-linux: #f59e0b;
+      --accent-distro: #10b981;
+      --line-color: rgba(148, 163, 184, 0.3);
+      --glow-osi: rgba(14, 165, 233, 0.4);
+      --glow-linux: rgba(245, 158, 11, 0.4);
+      --glow-distro: rgba(16, 185, 129, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      overflow-x: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Ambient background pulse animation */
+    body::before {
+      content: '';
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      top: 0;
+      left: 0;
+      background: radial-gradient(circle at 50% 30%, rgba(15, 23, 42, 0.8) 0%, rgba(9, 13, 22, 1) 100%);
+      z-index: -1;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: 1px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand span.tag {
+      font-size: 0.75rem;
+      background: rgba(14, 165, 233, 0.1);
+      color: var(--accent-osi);
+      padding: 3px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      font-weight: 500;
+    }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--card-bg);
+      padding: 5px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      background: #1e293b;
+      color: var(--text-main);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .btn {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #1e293b;
+      border-color: var(--accent-osi);
+      transform: translateY(-1px);
+    }
+
+    #workspace {
+      position: relative;
+      width: 100vw;
+      min-height: calc(100vh - 64px);
+      height: 1400px;
+      margin-top: 64px;
+      overflow: auto;
+    }
+
+    svg#connections {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    path.connector {
+      fill: none;
+      stroke: var(--line-color);
+      stroke-width: 2.5;
+      transition: stroke 0.3s, stroke-width 0.3s;
+    }
+
+    .card {
+      position: absolute;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      cursor: move;
+      user-select: none;
+      z-index: 2;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      width: 200px;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+      animation: cardFadeIn 0.4s ease-out forwards;
+    }
+
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: scale(0.92) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .card:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .card.osi {
+      border-left: 5px solid var(--accent-osi);
+    }
+    .card.osi:hover {
+      border-color: var(--accent-osi);
+      box-shadow: 0 12px 30px var(--glow-osi);
+    }
+
+    .card.proto {
+      border-left: 5px solid var(--accent-proto);
+      width: 170px;
+    }
+    .card.proto:hover {
+      border-color: var(--accent-proto);
+      box-shadow: 0 12px 30px rgba(99, 102, 241, 0.4);
+    }
+
+    .card.linux {
+      border-left: 5px solid var(--accent-linux);
+      width: 180px;
+    }
+    .card.linux:hover {
+      border-color: var(--accent-linux);
+      box-shadow: 0 12px 30px var(--glow-linux);
+    }
+
+    .card.distro {
+      border-left: 5px solid var(--accent-distro);
+      width: 220px;
+    }
+    .card.distro:hover {
+      border-color: var(--accent-distro);
+      box-shadow: 0 12px 30px var(--glow-distro);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: 'Courier New', Courier, monospace;
+      color: #f8fafc;
+    }
+
+    .card-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .info-icon {
+      font-size: 0.8rem;
+      color: var(--accent-osi);
+      cursor: pointer;
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: rgba(14, 165, 233, 0.1);
+      transition: all 0.2s;
+    }
+
+    .info-icon:hover {
+      background: rgba(14, 165, 233, 0.25);
+      transform: scale(1.1);
+    }
+
+    /* Enhanced Side Drawer */
+    #drawer {
+      position: fixed;
+      top: 64px;
+      right: -460px;
+      width: 440px;
+      height: calc(100vh - 64px);
+      background: #0c1220;
+      border-left: 1px solid var(--card-border);
+      padding: 32px;
+      box-shadow: -10px 0 35px rgba(0,0,0,0.6);
+      transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 200;
+      overflow-y: auto;
+    }
+
+    #drawer.open {
+      right: 0;
+    }
+
+    .drawer-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .drawer-close:hover {
+      color: var(--text-main);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .drawer-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: var(--accent-osi);
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .drawer-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .drawer-section {
+      margin-bottom: 24px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: 16px;
+      border-radius: 10px;
+    }
+
+    .drawer-section h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .drawer-section p {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .drawer-section ul {
+      list-style-position: inside;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+
+    .drawer-section ul li {
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .deep-dive-card {
+      background: rgba(14, 165, 233, 0.05);
+      border-left: 3px solid var(--accent-osi);
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.85rem;
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>MWEMA</h1>
+      <span class="tag">Interactive Tutor</span>
+    </div>
+
+    <div class="nav-controls">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-osi" onclick="switchTab('osi')">OSI & Protocols</button>
+        <button class="tab-btn" id="tab-linux" onclick="switchTab('linux')">Linux File System</button>
+        <button class="tab-btn" id="tab-distros" onclick="switchTab('distros')">Linux Distributions</button>
+      </div>
+      <button class="btn" onclick="resetPositions()">Reset Layout</button>
+    </div>
+  </header>
+
+  <div id="workspace">
+    <svg id="connections"></svg>
+  </div>
+
+  <div id="drawer">
+    <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+    <div id="drawer-content">
+      <h2 class="drawer-title" id="d-title">Select an item</h2>
+      <span class="drawer-badge" id="d-badge">Type</span>
+      <div class="drawer-section">
+        <h3>Overview & Architecture</h3>
+        <p id="d-desc">Click on any card to inspect detailed system descriptions and underlying technical principles.</p>
+      </div>
+      <div class="drawer-section" id="d-extra-container">
+        <h3>Core Specifications</h3>
+        <ul id="d-extra-list"></ul>
+      </div>
+      <div class="drawer-section" id="d-deep-container">
+        <h3>Advanced Insight</h3>
+        <p id="d-deep-text">Comprehensive analysis will appear here upon selection.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dataset = {
+      osi: {
+        nodes: [
+          { id: 'osi-7', name: '7. Application', sub: 'Layer 7', x: 80, y: 40, type: 'osi', desc: 'Provides network services directly to end-user software, bridging local applications with network transmission services.', details: ['HTTP/HTTPS web traffic integration', 'User authentication and session management', 'Data API access and formatting'], deep: 'Application layer protocols interact directly with software processes. They manage user authentication, resource sharing, and remote procedure coordination.' },
+          { id: 'osi-6', name: '6. Presentation', sub: 'Layer 6', x: 80, y: 130, type: 'osi', desc: 'Translates, encrypts, and compresses data streams so application layers can universally parse and trust incoming content.', details: ['TLS and SSL cryptographic security wrapping', 'Data structural formatting like JSON and XML', 'Lossless and lossy compression routines'], deep: 'Acts as a data translator between network formats and application requirements, handling character set conversions and cryptographic payload ciphering.' },
+          { id: 'osi-5', name: '5. Session', sub: 'Layer 5', x: 80, y: 220, type: 'osi', desc: 'Establishes, maintains, synchronizes, and terminates communication dialogues between separate host applications.', details: ['Session checkpointing and recovery points', 'Remote Procedure Call handling', 'Full duplex or half duplex control structures'], deep: 'Ensures that a session opened between client and server remains active long enough to complete data transfers, managing token exchanges and re-connections.' },
+          { id: 'osi-4', name: '4. Transport', sub: 'Layer 4', x: 80, y: 310, type: 'osi', desc: 'Handles end-to-end communication reliability, error correction, multiplexing, and packet flow pacing.', details: ['Source and destination port-to-port addressing', 'TCP reliable connection-oriented delivery', 'UDP low latency connectionless streaming'], deep: 'Segments large application payloads into manageable datagrams, guaranteeing sequential assembly or prioritizing speed over verification depending on protocol configuration.' },
+          { id: 'osi-3', name: '3. Network', sub: 'Layer 3', x: 80, y: 400, type: 'osi', desc: 'Routes individual data packets across heterogeneous interconnected networks using logical IP addressing schemes.', details: ['IPv4 and IPv6 logical host addressing', 'Dynamic packet routing and metric calculation', 'ICMP diagnostic and error reporting'], deep: 'Determines the optimal physical path across routers and gateways, using routing tables and path cost algorithms to forward packets towards destination subnets.' },
+          { id: 'osi-2', name: '2. Data Link', sub: 'Layer 2', x: 80, y: 490, type: 'osi', desc: 'Transfers structured frames between adjacent network nodes connected via the same physical medium.', details: ['Physical 48-bit MAC hardware addressing', 'Frame header construction and validation', 'Error detection via cyclic redundancy checks'], deep: 'Divides network layer packets into frames, handling physical medium access control, collision detection, and node-to-node error checks.' },
+          { id: 'osi-1', name: '1. Physical', sub: 'Layer 1', x: 80, y: 580, type: 'osi', desc: 'Transmits raw unstructured bitstreams across physical copper wiring, optical fibers, or wireless radio waves.', details: ['Electrical voltage levels and pin assignments', 'Fiber optic light pulse modulation', 'Wireless radio frequency carrier transmission'], deep: 'The foundational hardware layer responsible for converting logical data frames into physical energy signals across real-world transmission media.' },
+          
+          { id: 'p-http', name: 'HTTP / HTTPS', sub: 'Application Protocol', x: 380, y: 30, type: 'proto', desc: 'Hypertext Transfer Protocol governing web browser and server communication over TCP.', details: ['Default operational ports 80 and 443', 'Stateless request-response architectural cycle', 'Encrypted TLS wrapper integration for HTTPS'], deep: 'Powers modern web browsing by transferring HTML documents, images, and API payloads securely through encrypted cryptographic tunnels.' },
+          { id: 'p-dns', name: 'DNS', sub: 'Domain Name System', x: 380, y: 90, type: 'proto', desc: 'The distributed naming directory that resolves human-readable domain names into machine-routable IP addresses.', details: ['Standard operational port 53 over UDP and TCP', 'Hierarchical distributed lookup database', 'Record types including A, AAAA, MX, and CNAME'], deep: 'Functions as the phonebook of the internet, recursively querying root and authoritative name servers to resolve network addresses instantly.' },
+          { id: 'p-tls', name: 'TLS / SSL', sub: 'Security Layer', x: 380, y: 160, type: 'proto', desc: 'Cryptographic security protocols providing end-to-end data confidentiality and integrity across networks.', details: ['Asymmetric key exchange with symmetric session encryption', 'Cryptographic handshake and certificate verification', 'Protection against interception and tampering'], deep: 'Secures web browsing, email transmission, and virtual private networks by establishing secure cryptographic parameters before data exchange.' },
+          { id: 'p-tcp', name: 'TCP', sub: 'Transport Protocol', x: 380, y: 280, type: 'proto', desc: 'Connection-oriented transport protocol guaranteeing ordered, error-checked delivery of byte streams.', details: ['Three-way handshake initiation sequence', 'Window-based flow control and congestion management', 'Automatic retransmission of dropped segments'], deep: 'Prioritizes accuracy over raw speed, making it essential for file transfers, web traffic, and database queries where missing data causes failure.' },
+          { id: 'p-udp', name: 'UDP', sub: 'Transport Protocol', x: 380, y: 350, type: 'proto', desc: 'Lightweight, connectionless transport protocol optimized for speed and low operational overhead.', details: ['No handshake or connection setup latency', 'Unreliable best-effort packet delivery model', 'Ideal for real-time media streaming and gaming'], deep: 'Omits error correction overhead, allowing rapid transmission where dropped packets are tolerable or superseded by newer real-time data.' },
+          { id: 'p-ip', name: 'IPv4 / IPv6', sub: 'Internet Protocol', x: 380, y: 420, type: 'proto', desc: 'The core network layer protocol governing packet addressing, formatting, and routing across global networks.', details: ['Logical addressing schema with subnet masking', 'Best-effort packet delivery across internet gateways', 'Support for packet fragmentation and reassembly'], deep: 'Assigns unique source and destination addresses to packets, allowing routers to forward data across disparate local and wide area networks.' },
+          { id: 'p-eth', name: 'Ethernet', sub: 'Link Layer Standard', x: 380, y: 510, type: 'proto', desc: 'The prevailing wired local area network standard regulating physical frame transmission and collision handling.', details: ['Unique 48-bit hardware MAC identification', 'Frame check sequence error verification', 'Full-duplex high-speed copper and fiber links'], deep: 'Connects local systems efficiently within a switched LAN topology, managing hardware addressing and physical signal delivery.' },
+          { id: 'p-wifi', name: 'Wi-Fi', sub: '802.11 Wireless', x: 380, y: 580, type: 'proto', desc: 'Wireless local area networking protocols utilizing radio frequency bands for untethered connectivity.', details: ['Dual band and tri band frequency spectrums', 'Advanced WPA2 and WPA3 security encryption', 'Carrier sense multiple access collision avoidance'], deep: 'Replaces physical copper cables with electromagnetic radio waves, enabling mobile device integration into secure local networks.' }
+        ],
+        links: [
+          { from: 'osi-7', to: 'p-http' }, { from: 'osi-7', to: 'p-dns' },
+          { from: 'osi-6', to: 'p-tls' },
+          { from: 'osi-4', to: 'p-tcp' }, { from: 'osi-4', to: 'p-udp' },
+          { from: 'osi-3', to: 'p-ip' },
+          { from: 'osi-2', to: 'p-eth' }, { from: 'osi-2', to: 'p-wifi' },
+          { from: 'osi-1', to: 'p-eth' }, { from: 'osi-1', to: 'p-wifi' }
+        ]
+      },
+      linux: {
+        nodes: [
+          { id: 'l-root', name: '/', sub: 'Root Directory', x: 60, y: 300, type: 'linux', desc: 'The absolute apex of the Unix directory tree. Every single file, partition, and hardware device mounts beneath this point.', details: ['Top-level hierarchical foundation', 'Mount point for all storage partitions', 'Exclusively managed by superuser administrative root'], deep: 'Unlike Windows drive letter partitioning, Linux organizes everything under a single unified hierarchical tree originating at the root symbol.' },
+          { id: 'l-bin', name: '/bin', sub: 'Essential Binaries', x: 280, y: 40, type: 'linux', desc: 'Houses vital user command binaries needed during system boot and emergency single-user maintenance modes.', details: ['Core utilities like ls, cp, mv, cat, and bash', 'Accessible by all user privilege levels', 'Essential for basic shell operations'], deep: 'Keeps critical system binaries separate from optional software packages so maintenance scripts can execute even if secondary storage is detached.' },
+          { id: 'l-boot', name: '/boot', sub: 'Bootloader Files', x: 280, y: 120, type: 'linux', desc: 'Contains static files and kernel images necessary for the system bootloader to initialize the operating system.', details: ['Compressed Linux kernel image files', 'GRUB bootloader configuration files', 'Initial RAM disk filesystems for driver loading'], deep: 'Must reside on a readable partition during startup so the BIOS or UEFI firmware can load the kernel into system memory.' },
+          { id: 'l-etc', name: '/etc', sub: 'System Config', x: 280, y: 200, type: 'linux', desc: 'The central repository for host-specific configuration files governing system services, network rules, and user accounts.', details: ['User account databases and shadow passwords', 'Filesystem table mount definitions', 'Network interface and routing configurations'], deep: 'Comprises plaintext configuration files editable by administrators to tune system behavior, security policies, and application daemons.' },
+          { id: 'l-home', name: '/home', sub: 'User Directories', x: 280, y: 280, type: 'linux', desc: 'Allocated storage space hosting personal user directories, customized profiles, and local application data.', details: ['Individual user home folders like /home/user', 'Hidden configuration dotfiles such as bashrc', 'Enforced permission boundaries between users'], deep: 'Isolates personal user documents and application settings away from system files, allowing seamless backups and multi-user environments.' },
+          { id: 'l-var', name: '/var', sub: 'Variable Data', x: 280, y: 360, type: 'linux', desc: 'Stores dynamic data files that grow or change frequently during normal operating system execution.', details: ['System logs, auth records, and kernel messages', 'Mail spools, print queues, and databases', 'Web server document roots and cache files'], deep: 'Separates volatile data files from static system files, preventing log accumulation or database growth from filling critical system partitions.' },
+          { id: 'l-usr', name: '/usr', sub: 'User Programs', x: 280, y: 440, type: 'linux', desc: 'Secondary hierarchical directory containing read-only user utilities, shared libraries, and application packages.', details: ['Secondary application binaries in /usr/bin', 'Shared library files and header assets', 'Documentation manuals and system assets'], deep: 'Designed to be shareable across network environments or mounted read-only to enhance system security and software organization.' },
+          { id: 'l-proc', name: '/proc', sub: 'Virtual Filesystem', x: 280, y: 520, type: 'linux', desc: 'A pseudo-filesystem residing entirely in system RAM providing a communication window into kernel and process states.', details: ['Generated dynamically in volatile memory', 'Hardware statistics in proc cpuinfo', 'Active memory consumption in proc meminfo'], deep: 'Does not consume physical hard disk space; instead, it translates live kernel metrics and process tables into readable text files.' },
+          { id: 'l-dev', name: '/dev', sub: 'Device Nodes', x: 280, y: 600, type: 'linux', desc: 'Contains special file nodes representing physical hardware components, virtual interfaces, and system drivers.', details: ['Block storage nodes like sda disk drives', 'Null byte sinks and zero generators', 'Cryptographic random number entropy sources'], deep: 'Allows user space programs to interact directly with hardware peripherals using standard file read and write system calls.' },
+
+          { id: 'l-etc-net', name: '/etc/network', sub: 'Network Config', x: 500, y: 200, type: 'linux', desc: 'Specific directory housing static network interface bindings, routing rules, and interface definitions.', details: ['IP interface configurations', 'DNS resolver nameserver settings'], deep: 'Manages persistent network parameters applied during system startup and interface initialization.' },
+          { id: 'l-var-log', name: '/var/log', sub: 'System Logs', x: 500, y: 360, type: 'linux', desc: 'Central repository aggregating system logs, security audit trails, and application diagnostic messages.', details: ['System logs, auth records, and daemon outputs', 'Automated log rotation and archival management'], deep: 'Crucial for system auditing, intrusion detection, and troubleshooting error conditions across services.' },
+          { id: 'l-usr-bin', name: '/usr/bin', sub: 'Application Binaries', x: 500, y: 440, type: 'linux', desc: 'Directory storing executable binaries for user-installed applications and extended system utilities.', details: ['User programs like python, git, and curl', 'Extended command-line software packages'], deep: 'Expands available system capabilities beyond essential boot binaries with user-space tools and applications.' }
+        ],
+        links: [
+          { from: 'l-root', to: 'l-bin' },
+          { from: 'l-root', to: 'l-boot' },
+          { from: 'l-root', to: 'l-etc' },
+          { from: 'l-root', to: 'l-home' },
+          { from: 'l-root', to: 'l-var' },
+          { from: 'l-root', to: 'l-usr' },
+          { from: 'l-root', to: 'l-proc' },
+          { from: 'l-root', to: 'l-dev' },
+          { from: 'l-etc', to: 'l-etc-net' },
+          { from: 'l-var', to: 'l-var-log' },
+          { from: 'l-usr', to: 'l-usr-bin' }
+        ]
+      },
+      distros: {
+        nodes: [
+          { id: 'd-core', name: 'Debian GNU/Linux', sub: 'Base Upstream', x: 50, y: 300, type: 'distro', desc: 'The rock-solid, stable upstream foundation shared by both Kali Linux and Parrot OS, known for meticulous package curation.', details: ['Strict adherence to free software philosophy', 'Massive software repository ecosystem with apt packaging', 'Exceptional long-term operational stability'], deep: 'Debian provides an unyielding, dependable core architecture with rigorous quality testing, making it the premier parent distribution for specialized security operating systems.' },
+          { id: 'd-kali', name: 'Kali Linux', sub: 'OffSec Flagship', x: 350, y: 150, type: 'distro', desc: 'Engineered by Offensive Security as the industry standard platform for penetration testing, security auditing, and red teaming exercises.', details: ['Default administrative root execution model for full hardware access', 'Comprehensive meta-packages grouping hundreds of security tools', 'Direct alignment with OSCP certification training standards'], deep: 'Kali is purpose-built for offensive security professionals. Its default root user model allows raw socket access, packet injection, and direct kernel manipulation required for advanced wireless auditing, vulnerability assessment, and exploit development.' },
+          { id: 'd-parrot', name: 'Parrot OS', sub: 'Security & Privacy', x: 350, y: 450, type: 'distro', desc: 'Developed by Parrot Security as a lightweight, dual-purpose operating system combining rigorous penetration testing tools with built-in anonymity features and development environments.', details: ['Secure by default non-root user privilege architecture', 'Built-in AnonSurf and Tor network routing integration', 'Pre-installed programming IDEs, compilers, and cryptographic tools'], deep: 'Parrot OS balances offensive security testing with defensive privacy and software development. By running under standard non-root user privileges by default and integrating Tor anonymity routing, it caters to privacy advocates, developers, and security analysts alike.' }
+        ],
+        links: [
+          { from: 'd-core', to: 'd-kali' },
+          { from: 'd-core', to: 'd-parrot' }
+        ]
+      }
+    };
+
+    let currentTab = 'osi';
+    const workspace = document.getElementById('workspace');
+    const svg = document.getElementById('connections');
+    const nodes = {};
+
+    function switchTab(tabKey) {
+      currentTab = tabKey;
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`tab-${tabKey}`).classList.add('active');
+
+      closeDrawer();
+      renderScene();
+    }
+
+    function renderScene() {
+      workspace.querySelectorAll('.card').forEach(c => c.remove());
+      svg.innerHTML = '';
+      Object.keys(nodes).forEach(key => delete nodes[key]);
+
+      const activeData = dataset[currentTab];
+
+      activeData.nodes.forEach(item => {
+        createCard(item);
+      });
+
+      renderConnections();
+    }
+
+    function createCard(item) {
+      const card = document.createElement('div');
+      card.className = `card ${item.type}`;
+      card.id = item.id;
+      card.style.left = item.x + 'px';
+      card.style.top = item.y + 'px';
+
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="card-title">${item.name}</span>
+          <span class="info-icon" onclick="openDetails(event, '${item.id}')">ⓘ</span>
+        </div>
+        <div class="card-subtitle">${item.sub}</div>
+      `;
+
+      card.addEventListener('mousedown', startDrag);
+      workspace.appendChild(card);
+      nodes[item.id] = { element: card, data: item };
+    }
+
+    function renderConnections() {
+      svg.innerHTML = '';
+      const activeData = dataset[currentTab];
+
+      activeData.links.forEach(link => {
+        const fromEl = nodes[link.from]?.element;
+        const toEl = nodes[link.to]?.element;
+
+        if (!fromEl || !toEl) return;
+
+        const fromRect = fromEl.getBoundingClientRect();
+        const toRect = toEl.getBoundingClientRect();
+        const wsRect = workspace.getBoundingClientRect();
+
+        const x1 = (fromRect.left + fromRect.width) - wsRect.left + workspace.scrollLeft;
+        const y1 = (fromRect.top + fromRect.height / 2) - wsRect.top + workspace.scrollTop;
+        const x2 = toRect.left - wsRect.left + workspace.scrollLeft;
+        const y2 = (toRect.top + toRect.height / 2) - wsRect.top + workspace.scrollTop;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const dx = Math.abs(x2 - x1) * 0.5;
+        const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'connector');
+        if (currentTab === 'linux') {
+          path.style.stroke = 'rgba(245, 158, 11, 0.35)';
+        } else if (currentTab === 'distros') {
+          path.style.stroke = 'rgba(16, 185, 129, 0.35)';
+        }
+        svg.appendChild(path);
+      });
+    }
+
+    let activeCard = null;
+    let offset = { x: 0, y: 0 };
+
+    function startDrag(e) {
+      if (e.target.classList.contains('info-icon')) return;
+      activeCard = e.currentTarget;
+      const rect = activeCard.getBoundingClientRect();
+      offset.x = e.clientX - rect.left;
+      offset.y = e.clientY - rect.top;
+
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', stopDrag);
+    }
+
+    function onDrag(e) {
+      if (!activeCard) return;
+      const wsRect = workspace.getBoundingClientRect();
+      let x = e.clientX - wsRect.left - offset.x + workspace.scrollLeft;
+      let y = e.clientY - wsRect.top - offset.y + workspace.scrollTop;
+
+      activeCard.style.left = x + 'px';
+      activeCard.style.top = y + 'px';
+
+      renderConnections();
+    }
+
+    function stopDrag() {
+      activeCard = null;
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    }
+
+    function openDetails(e, id) {
+      e.stopPropagation();
+      const item = nodes[id].data;
+      
+      document.getElementById('d-title').innerText = item.name;
+      document.getElementById('d-badge').innerText = item.sub;
+      document.getElementById('d-desc').innerText = item.desc;
+      document.getElementById('d-deep-text').innerText = item.deep;
+
+      const list = document.getElementById('d-extra-list');
+      list.innerHTML = '';
+      item.details.forEach(detail => {
+        const li = document.createElement('li');
+        li.innerText = detail;
+        list.appendChild(li);
+      });
+
+      document.getElementById('drawer').classList.add('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+    }
+
+    function resetPositions() {
+      const activeData = dataset[currentTab];
+      activeData.nodes.forEach(item => {
+        const el = nodes[item.id]?.element;
+        if (el) {
+          el.style.left = item.x + 'px';
+          el.style.top = item.y + 'px';
+        }
+      });
+      renderConnections();
+    }
+
+    workspace.addEventListener('scroll', renderConnections);
+    window.addEventListener('resize', renderConnections);
+    window.onload = renderScene;
+  </script>
+</body>
+</html>
